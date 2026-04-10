@@ -1,0 +1,11 @@
+server:
+  port: 8080
+  host: "0.0.0.0"
+
+s3:
+  endpoint: "https://s3.example.com"
+  bucket: "my-bucket"
+  region: "us-east-1"
+  access_key: ""
+  secret_key: ""
+  path_prefix: ""
