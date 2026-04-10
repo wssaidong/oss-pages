@@ -1,6 +1,6 @@
 # OSS Pages
 
-类似 Cloudflare Pages 的静态网站部署平台：Go CLI 打包项目，Go API 接收并部署到 S3 兼容存储。
+Pages的静态网站部署平台：Go CLI 打包项目，Go API 接收并部署到 S3 兼容存储。
 
 ## 快速开始
 
@@ -39,6 +39,7 @@ cp config.yaml.example config.yaml
 |------|------|
 | `oss-cli init <name>` | 初始化项目，生成 `wrangler.toml` |
 | `oss-cli deploy` | 构建 + 打包 + 上传 |
+| `oss-cli push <directory>` | 直接推送本地目录（跳过构建） |
 | `oss-cli projects list` | 列出所有已部署项目 |
 | `oss-cli projects view <name>` | 查看项目详情 |
 | `oss-cli projects delete <name>` | 删除项目 |

@@ -1,0 +1,9 @@
+.claude/
+.idea/
+docs/superpowers
+
+*.yaml
+*.toml
+
+cli
+server

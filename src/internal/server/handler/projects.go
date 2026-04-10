@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -27,14 +28,20 @@ type DeleteResponse struct {
 	Error   string `json:"error,omitempty"`
 }
 
+// FileStore interface for file operations
+type FileStore interface {
+	DeleteProject(ctx context.Context, projectName string) error
+}
+
 // ProjectsHandler handles project CRUD operations
 type ProjectsHandler struct {
-	store MetaStore
+	store     MetaStore
+	fileStore FileStore
 }
 
 // NewProjectsHandler creates a new ProjectsHandler
-func NewProjectsHandler(store MetaStore) *ProjectsHandler {
-	return &ProjectsHandler{store: store}
+func NewProjectsHandler(store MetaStore, fileStore FileStore) *ProjectsHandler {
+	return &ProjectsHandler{store: store, fileStore: fileStore}
 }
 
 // HandleListProjects handles GET /projects
@@ -70,8 +77,28 @@ func (h *ProjectsHandler) HandleGetProject(c *gin.Context) {
 // HandleDeleteProject handles DELETE /projects/:name
 func (h *ProjectsHandler) HandleDeleteProject(c *gin.Context) {
 	name := c.Param("name")
+	ctx := c.Request.Context()
 
-	if err := h.store.DeleteProject(c.Request.Context(), name); err != nil {
+	// Check project exists
+	if _, err := h.store.GetProject(ctx, name); err != nil {
+		c.JSON(http.StatusNotFound, DeleteResponse{
+			Success: false,
+			Error:   fmt.Sprintf("project '%s' not found", name),
+		})
+		return
+	}
+
+	// Step 1: delete S3 files first
+	if err := h.fileStore.DeleteProject(ctx, name); err != nil {
+		c.JSON(http.StatusInternalServerError, DeleteResponse{
+			Success: false,
+			Error:   fmt.Sprintf("delete files: %s", err.Error()),
+		})
+		return
+	}
+
+	// Step 2: delete metadata
+	if err := h.store.DeleteProject(ctx, name); err != nil {
 		c.JSON(http.StatusInternalServerError, DeleteResponse{
 			Success: false,
 			Error:   err.Error(),

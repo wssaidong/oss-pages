@@ -51,6 +51,35 @@ s3:
 	if cfg.S3.PathPrefix != "cdn/" {
 		t.Errorf("expected path_prefix 'cdn/', got '%s'", cfg.S3.PathPrefix)
 	}
+	if cfg.S3.Backend != "memory" {
+		t.Errorf("expected default backend 'memory', got '%s'", cfg.S3.Backend)
+	}
+}
+
+func TestLoadServerConfig_FileBackend(t *testing.T) {
+	content := `
+server:
+  port: 9000
+
+s3:
+  backend: "file"
+  root_dir: "/tmp/oss-pages-data"
+  bucket: "test-bucket"
+`
+	tmp, _ := os.CreateTemp("", "config.yaml")
+	tmp.WriteString(content)
+	defer os.Remove(tmp.Name())
+
+	cfg, err := LoadServerConfig(tmp.Name())
+	if err != nil {
+		t.Fatalf("LoadServerConfig failed: %v", err)
+	}
+	if cfg.S3.Backend != "file" {
+		t.Errorf("expected backend 'file', got '%s'", cfg.S3.Backend)
+	}
+	if cfg.S3.RootDir != "/tmp/oss-pages-data" {
+		t.Errorf("expected root_dir '/tmp/oss-pages-data', got '%s'", cfg.S3.RootDir)
+	}
 }
 
 func TestLoadServerConfig_NotFound(t *testing.T) {

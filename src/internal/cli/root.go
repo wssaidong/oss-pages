@@ -1,8 +1,27 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 )
+
+const defaultServerURL = "http://localhost:8080"
+
+// resolveServerURL returns the server URL by priority:
+// 1. --server flag  2. OSS_SERVER_URL env  3. fallback
+func resolveServerURL(flag, fallback string) string {
+	if flag != "" {
+		return flag
+	}
+	if env := os.Getenv("OSS_SERVER_URL"); env != "" {
+		return env
+	}
+	if fallback != "" {
+		return fallback
+	}
+	return defaultServerURL
+}
 
 // CreateRootCommand builds the root cobra command with all subcommands.
 func CreateRootCommand() *cobra.Command {
@@ -42,6 +61,21 @@ func CreateRootCommand() *cobra.Command {
 	deployCmd.Flags().StringVarP(&deployConfig, "config", "c", "", "Config file path")
 	root.AddCommand(deployCmd)
 
+	// push command
+	var pushServer string
+	var pushConfig string
+	pushCmd := &cobra.Command{
+		Use:   "push [directory]",
+		Short: "Push a local directory directly without building",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return RunPush(cmd.Context(), pushServer, pushConfig, args[0])
+		},
+	}
+	pushCmd.Flags().StringVar(&pushServer, "server", "", "Server URL (overrides wrangler.toml)")
+	pushCmd.Flags().StringVarP(&pushConfig, "config", "c", "", "Config file path")
+	root.AddCommand(pushCmd)
+
 	// projects command group
 	var projectsServer string
 	projectsCmd := &cobra.Command{
@@ -54,7 +88,7 @@ func CreateRootCommand() *cobra.Command {
 		Use:   "list",
 		Short: "List all projects",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ListProjects(cmd.Context(), projectsServer)
+			return ListProjects(cmd.Context(), resolveServerURL(projectsServer, ""))
 		},
 	})
 	projectsCmd.AddCommand(&cobra.Command{
@@ -62,7 +96,7 @@ func CreateRootCommand() *cobra.Command {
 		Short: "View project details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ViewProject(cmd.Context(), projectsServer, args[0])
+			return ViewProject(cmd.Context(), resolveServerURL(projectsServer, ""), args[0])
 		},
 	})
 	projectsCmd.AddCommand(&cobra.Command{
@@ -70,7 +104,7 @@ func CreateRootCommand() *cobra.Command {
 		Short: "Delete project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return DeleteProject(cmd.Context(), projectsServer, args[0])
+			return DeleteProject(cmd.Context(), resolveServerURL(projectsServer, ""), args[0])
 		},
 	})
 	root.AddCommand(projectsCmd)
@@ -82,4 +116,3 @@ func CreateRootCommand() *cobra.Command {
 func Execute() error {
 	return CreateRootCommand().Execute()
 }
-

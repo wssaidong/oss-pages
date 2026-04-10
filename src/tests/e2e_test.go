@@ -94,7 +94,7 @@ func setupRouter(s3Mock *mockS3) *gin.Engine {
 
 	d := deployer.NewDeployer(fileStore)
 	deployHandler := handler.NewDeployHandler(d, metaStore, "https://cdn.example.com")
-	projectsHandler := handler.NewProjectsHandler(metaStore)
+	projectsHandler := handler.NewProjectsHandler(metaStore, fileStore)
 
 	r := gin.New()
 	r.POST("/deploy", deployHandler.HandleDeploy)
@@ -205,7 +205,7 @@ func TestE2E_DeployAndList(t *testing.T) {
 		t.Fatalf("delete failed: status %d", resp.StatusCode)
 	}
 
-	// 6. Verify metadata deleted (note: S3 files remain; handler only deletes metadata)
+	// 6. Verify both S3 files and metadata deleted
 	var deleteResp handler.DeleteResponse
 	json.NewDecoder(resp.Body).Decode(&deleteResp)
 	if !deleteResp.Success {

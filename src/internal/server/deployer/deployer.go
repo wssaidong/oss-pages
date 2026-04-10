@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// maxDecompressedSize is the maximum total decompressed size (500MB)
+const maxDecompressedSize = 500 << 20
+
 // Storage defines the interface deployer depends on (dependency injection)
 type Storage interface {
 	UploadProjectFiles(ctx context.Context, projectName string, files map[string][]byte) (int, error)
@@ -48,6 +51,7 @@ func (d *Deployer) Deploy(ctx context.Context, projectName string, zipReader io.
 	}
 
 	files := make(map[string][]byte)
+	var totalSize int64
 	for _, f := range r.File {
 		// Security: prevent path traversal
 		clean := filepath.Clean(f.Name)
@@ -59,11 +63,18 @@ func (d *Deployer) Deploy(ctx context.Context, projectName string, zipReader io.
 			continue
 		}
 
+		// Zip bomb check: verify declared size before reading
+		totalSize += int64(f.UncompressedSize64)
+		if totalSize > maxDecompressedSize {
+			return nil, fmt.Errorf("decompressed size exceeds limit (%dMB)", maxDecompressedSize>>20)
+		}
+
 		rc, err := f.Open()
 		if err != nil {
 			return nil, fmt.Errorf("open zip entry %s: %w", f.Name, err)
 		}
-		fileData, err := io.ReadAll(rc)
+		// Use LimitReader as a second guard against lying headers
+		fileData, err := io.ReadAll(io.LimitReader(rc, maxDecompressedSize-totalSize+int64(f.UncompressedSize64)))
 		rc.Close()
 		if err != nil {
 			return nil, fmt.Errorf("read zip entry %s: %w", f.Name, err)

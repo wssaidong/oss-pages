@@ -19,7 +19,10 @@ type ServerConfig struct {
 		AccessKey  string `mapstructure:"access_key"`
 		SecretKey  string `mapstructure:"secret_key"`
 		PathPrefix string `mapstructure:"path_prefix"`
+		Backend    string `mapstructure:"backend"`  // memory | file | s3 (default: memory)
+		RootDir    string `mapstructure:"root_dir"` // for file backend
 	} `mapstructure:"s3"`
+	CDNBaseURL string `mapstructure:"cdn_base_url"` // CDN base URL for deployed projects
 }
 
 // LoadServerConfig loads config.yaml with env override support
@@ -37,6 +40,9 @@ func LoadServerConfig(path string) (*ServerConfig, error) {
 	var cfg ServerConfig
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+	if cfg.S3.Backend == "" {
+		cfg.S3.Backend = "memory"
 	}
 	return &cfg, nil
 }

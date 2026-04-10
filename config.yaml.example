@@ -2,6 +2,9 @@ server:
   port: 8080
   host: "0.0.0.0"
 
+# CDN base URL for deployed projects (used in API responses)
+cdn_base_url: "https://cdn.example.com"
+
 s3:
   endpoint: "https://s3.example.com"
   bucket: "my-bucket"
@@ -9,3 +12,10 @@ s3:
   access_key: ""
   secret_key: ""
   path_prefix: ""
+
+  # Storage backend: memory | file | s3
+  # - memory: in-memory store, data lost on restart (default, dev only)
+  # - file: persist to local filesystem (recommended for local dev)
+  # - s3: real S3-compatible storage (production)
+  backend: "file"
+  root_dir: "./oss-pages-data"  # required for file backend

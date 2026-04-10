@@ -31,7 +31,9 @@ func (m *mockDeployer) Deploy(ctx context.Context, projectName string, zipReader
 
 // mockMetaStoreForDeploy implements MetaStore for testing
 type mockMetaStoreForDeploy struct {
-	projects map[string]*storage.ProjectMeta
+	projects    map[string]*storage.ProjectMeta
+	lockErr     error
+	releaseErr  error
 }
 
 func (m *mockMetaStoreForDeploy) GetProjects(ctx context.Context) ([]*storage.ProjectMeta, error) {
@@ -57,6 +59,21 @@ func (m *mockMetaStoreForDeploy) UpsertProject(ctx context.Context, meta *storag
 
 func (m *mockMetaStoreForDeploy) DeleteProject(ctx context.Context, name string) error {
 	delete(m.projects, name)
+	return nil
+}
+
+func (m *mockMetaStoreForDeploy) AcquireDeployLock(ctx context.Context, projectName, projectURL string) (string, error) {
+	if m.lockErr != nil {
+		return "", m.lockErr
+	}
+	return "test-deploy-id", nil
+}
+
+func (m *mockMetaStoreForDeploy) ReleaseDeployLock(ctx context.Context, meta *storage.ProjectMeta) error {
+	if m.releaseErr != nil {
+		return m.releaseErr
+	}
+	m.projects[meta.Name] = meta
 	return nil
 }
 
@@ -161,13 +178,14 @@ func TestDeployHandler_DeployFailed(t *testing.T) {
 
 	h.HandleDeploy(c)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", w.Code)
+	// "upload failed" matches UPLOAD_FAILED → 502
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("expected 502, got %d", w.Code)
 	}
 	var resp DeployResponse
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	if resp.Code != "DEPLOY_FAILED" {
-		t.Errorf("expected DEPLOY_FAILED, got %s", resp.Code)
+	if resp.Code != "UPLOAD_FAILED" {
+		t.Errorf("expected UPLOAD_FAILED, got %s", resp.Code)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 
 // ListProjects lists all deployed projects
 func ListProjects(ctx context.Context, serverURL string) error {
+	fmt.Printf("Fetching projects from %s ...\n", serverURL)
 	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/projects", nil)
 	if err != nil {
 		return err
@@ -49,6 +50,7 @@ func ListProjects(ctx context.Context, serverURL string) error {
 
 // ViewProject shows details for a specific project
 func ViewProject(ctx context.Context, serverURL, name string) error {
+	fmt.Printf("Fetching project '%s' from %s ...\n", name, serverURL)
 	req, err := http.NewRequestWithContext(ctx, "GET", serverURL+"/projects/"+name, nil)
 	if err != nil {
 		return err
@@ -77,6 +79,7 @@ func ViewProject(ctx context.Context, serverURL, name string) error {
 
 // DeleteProject deletes a project
 func DeleteProject(ctx context.Context, serverURL, name string) error {
+	fmt.Printf("Deleting project '%s' from %s ...\n", name, serverURL)
 	req, err := http.NewRequestWithContext(ctx, "DELETE", serverURL+"/projects/"+name, nil)
 	if err != nil {
 		return err

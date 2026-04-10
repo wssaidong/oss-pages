@@ -44,6 +44,25 @@ func (m *mockProjectsMetaStore) DeleteProject(ctx context.Context, name string) 
 	return nil
 }
 
+func (m *mockProjectsMetaStore) AcquireDeployLock(ctx context.Context, projectName, projectURL string) (string, error) {
+	return "test-deploy-id", nil
+}
+
+func (m *mockProjectsMetaStore) ReleaseDeployLock(ctx context.Context, meta *storage.ProjectMeta) error {
+	m.projects[meta.Name] = meta
+	return nil
+}
+
+// mockFileStore implements FileStore for projects handler testing
+type mockFileStore struct {
+	deleted []string
+}
+
+func (m *mockFileStore) DeleteProject(ctx context.Context, projectName string) error {
+	m.deleted = append(m.deleted, projectName)
+	return nil
+}
+
 func TestProjectsHandler_List(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	store := &mockProjectsMetaStore{
@@ -56,7 +75,7 @@ func TestProjectsHandler_List(t *testing.T) {
 			},
 		},
 	}
-	h := NewProjectsHandler(store)
+	h := NewProjectsHandler(store, &mockFileStore{})
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -87,7 +106,7 @@ func TestProjectsHandler_Get(t *testing.T) {
 			},
 		},
 	}
-	h := NewProjectsHandler(store)
+	h := NewProjectsHandler(store, &mockFileStore{})
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -104,7 +123,7 @@ func TestProjectsHandler_Get(t *testing.T) {
 func TestProjectsHandler_Get_NotFound(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	store := &mockProjectsMetaStore{projects: make(map[string]*storage.ProjectMeta)}
-	h := NewProjectsHandler(store)
+	h := NewProjectsHandler(store, &mockFileStore{})
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -125,7 +144,8 @@ func TestProjectsHandler_Delete(t *testing.T) {
 			"my-app": {Name: "my-app"},
 		},
 	}
-	h := NewProjectsHandler(store)
+	fs := &mockFileStore{}
+	h := NewProjectsHandler(store, fs)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
