@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,14 +12,24 @@ import (
 	"github.com/oss-pages/oss-pages/pkg/s3client"
 )
 
+// VersionMeta holds version metadata
+type VersionMeta struct {
+	ID         string    `json:"id"`
+	DeployedAt time.Time `json:"deployed_at"`
+	FileCount  int       `json:"file_count"`
+	PreviewURL string    `json:"preview_url"`
+}
+
 // ProjectMeta holds project metadata
 type ProjectMeta struct {
-	Name       string    `json:"name"`
-	URL        string    `json:"url"`
-	FileCount  int       `json:"file_count"`
-	DeployedAt time.Time `json:"deployed_at"`
-	Deploying  bool      `json:"deploying"`
-	DeployID   string    `json:"deploy_id"`
+	Name           string        `json:"name"`
+	URL            string        `json:"url"`
+	FileCount      int           `json:"file_count"`
+	DeployedAt     time.Time     `json:"deployed_at"`
+	Deploying      bool          `json:"deploying"`
+	DeployID       string        `json:"deploy_id"`
+	Versions       []VersionMeta `json:"versions,omitempty"`
+	CurrentVersion string        `json:"current_version,omitempty"`
 }
 
 // ProjectsMeta is the root metadata file structure
@@ -175,6 +186,105 @@ func (m *MetaStore) DeleteProject(ctx context.Context, name string) error {
 	}
 
 	return m.saveProjectsRetry(ctx, filtered)
+}
+
+// GetVersion returns a specific version metadata for a project
+func (m *MetaStore) GetVersion(ctx context.Context, projectName, versionID string) (*VersionMeta, error) {
+	project, err := m.GetProject(ctx, projectName)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range project.Versions {
+		if v.ID == versionID {
+			return &v, nil
+		}
+	}
+	return nil, fmt.Errorf("version '%s' not found", versionID)
+}
+
+// AppendVersion adds a new version to the project and trims old versions if needed
+func (m *MetaStore) AppendVersion(ctx context.Context, projectName string, version VersionMeta, maxVersions int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	projects, _ := m.getProjectsLocked(ctx)
+
+	for _, p := range projects {
+		if p.Name == projectName {
+			p.Versions = append(p.Versions, version)
+			// Trim to maxVersions (keep newest)
+			if len(p.Versions) > maxVersions {
+				p.Versions = p.Versions[len(p.Versions)-maxVersions:]
+			}
+			return m.saveProjectsRetry(ctx, projects)
+		}
+	}
+	return fmt.Errorf("project '%s' not found", projectName)
+}
+
+// DeleteVersion removes a version from the project
+func (m *MetaStore) DeleteVersion(ctx context.Context, projectName, versionID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	projects, _ := m.getProjectsLocked(ctx)
+
+	for _, p := range projects {
+		if p.Name == projectName {
+			filtered := make([]VersionMeta, 0, len(p.Versions))
+			for _, v := range p.Versions {
+				if v.ID != versionID {
+					filtered = append(filtered, v)
+				}
+			}
+			p.Versions = filtered
+			return m.saveProjectsRetry(ctx, projects)
+		}
+	}
+	return fmt.Errorf("project '%s' not found", projectName)
+}
+
+// UpdateCurrentVersion updates the current version for a project
+func (m *MetaStore) UpdateCurrentVersion(ctx context.Context, projectName, versionID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	projects, _ := m.getProjectsLocked(ctx)
+
+	for _, p := range projects {
+		if p.Name == projectName {
+			p.CurrentVersion = versionID
+			return m.saveProjectsRetry(ctx, projects)
+		}
+	}
+	return fmt.Errorf("project '%s' not found", projectName)
+}
+
+// MigrateToVersioned ensures an old project has the version fields initialized
+func (m *MetaStore) MigrateToVersioned(ctx context.Context, projectName string, fileCount int, deployedAt time.Time, cdnBaseURL string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	projects, _ := m.getProjectsLocked(ctx)
+	for i, p := range projects {
+		if p.Name == projectName {
+			if p.Versions == nil {
+				versionID := deployedAt.Format("20060102150405") + "-migrated"
+				p.Versions = []VersionMeta{
+					{
+						ID:         versionID,
+						DeployedAt: deployedAt,
+						FileCount:  fileCount,
+						PreviewURL: fmt.Sprintf("%s/%s/v/%s/", strings.TrimSuffix(cdnBaseURL, "/"), projectName, versionID),
+					},
+				}
+				p.CurrentVersion = versionID
+			}
+			projects[i] = p
+			return m.saveProjectsRetry(ctx, projects)
+		}
+	}
+	return fmt.Errorf("project '%s' not found", projectName)
 }
 
 // getProjectsLocked reads projects without acquiring the mutex (caller must hold it)

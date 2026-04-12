@@ -21,12 +21,17 @@ import (
 
 // mockDeployer implements the Deployer interface for testing
 type mockDeployer struct {
-	result *deployer.DeployResult
-	err    error
+	result    *deployer.DeployResult
+	versionID string
+	err       error
 }
 
 func (m *mockDeployer) Deploy(ctx context.Context, projectName string, zipReader io.Reader, size int64) (*deployer.DeployResult, error) {
 	return m.result, m.err
+}
+
+func (m *mockDeployer) DeployWithVersion(ctx context.Context, projectName string, zipReader io.Reader, size int64) (*deployer.DeployResult, string, error) {
+	return m.result, m.versionID, m.err
 }
 
 // mockMetaStoreForDeploy implements MetaStore for testing
@@ -74,6 +79,55 @@ func (m *mockMetaStoreForDeploy) ReleaseDeployLock(ctx context.Context, meta *st
 		return m.releaseErr
 	}
 	m.projects[meta.Name] = meta
+	return nil
+}
+
+func (m *mockMetaStoreForDeploy) GetVersion(ctx context.Context, projectName, versionID string) (*storage.VersionMeta, error) {
+	p, ok := m.projects[projectName]
+	if !ok {
+		return nil, fmt.Errorf("project '%s' not found", projectName)
+	}
+	for _, v := range p.Versions {
+		if v.ID == versionID {
+			return &v, nil
+		}
+	}
+	return nil, fmt.Errorf("version '%s' not found", versionID)
+}
+
+func (m *mockMetaStoreForDeploy) AppendVersion(ctx context.Context, projectName string, version storage.VersionMeta, maxVersions int) error {
+	p, ok := m.projects[projectName]
+	if !ok {
+		return fmt.Errorf("project '%s' not found", projectName)
+	}
+	p.Versions = append(p.Versions, version)
+	if len(p.Versions) > maxVersions {
+		p.Versions = p.Versions[len(p.Versions)-maxVersions:]
+	}
+	return nil
+}
+
+func (m *mockMetaStoreForDeploy) DeleteVersion(ctx context.Context, projectName, versionID string) error {
+	p, ok := m.projects[projectName]
+	if !ok {
+		return fmt.Errorf("project '%s' not found", projectName)
+	}
+	filtered := make([]storage.VersionMeta, 0, len(p.Versions))
+	for _, v := range p.Versions {
+		if v.ID != versionID {
+			filtered = append(filtered, v)
+		}
+	}
+	p.Versions = filtered
+	return nil
+}
+
+func (m *mockMetaStoreForDeploy) UpdateCurrentVersion(ctx context.Context, projectName, versionID string) error {
+	p, ok := m.projects[projectName]
+	if !ok {
+		return fmt.Errorf("project '%s' not found", projectName)
+	}
+	p.CurrentVersion = versionID
 	return nil
 }
 

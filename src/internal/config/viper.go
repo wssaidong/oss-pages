@@ -13,16 +13,18 @@ type ServerConfig struct {
 		Host string `mapstructure:"host"`
 	} `mapstructure:"server"`
 	S3 struct {
-		Endpoint   string `mapstructure:"endpoint"`
-		Bucket     string `mapstructure:"bucket"`
-		Region     string `mapstructure:"region"`
-		AccessKey  string `mapstructure:"access_key"`
-		SecretKey  string `mapstructure:"secret_key"`
-		PathPrefix string `mapstructure:"path_prefix"`
-		Backend    string `mapstructure:"backend"`  // memory | file | s3 (default: memory)
-		RootDir    string `mapstructure:"root_dir"` // for file backend
+		Endpoint      string `mapstructure:"endpoint"`
+		Bucket        string `mapstructure:"bucket"`
+		Region        string `mapstructure:"region"`
+		AccessKey     string `mapstructure:"access_key"`
+		SecretKey     string `mapstructure:"secret_key"`
+		PathPrefix    string `mapstructure:"path_prefix"`
+		VersionPrefix string `mapstructure:"version_prefix"` // separate prefix for version snapshots (default: "versions/")
+		Backend       string `mapstructure:"backend"`         // memory | file | s3 (default: memory)
+		RootDir       string `mapstructure:"root_dir"`        // for file backend
 	} `mapstructure:"s3"`
-	CDNBaseURL string `mapstructure:"cdn_base_url"` // CDN base URL for deployed projects
+	CDNBaseURL  string `mapstructure:"cdn_base_url"`  // CDN base URL for deployed projects
+	MaxVersions int    `mapstructure:"max_versions"` // max versions per project (default: 10)
 }
 
 // LoadServerConfig loads config.yaml with env override support
@@ -43,6 +45,12 @@ func LoadServerConfig(path string) (*ServerConfig, error) {
 	}
 	if cfg.S3.Backend == "" {
 		cfg.S3.Backend = "memory"
+	}
+	if cfg.S3.VersionPrefix == "" {
+		cfg.S3.VersionPrefix = "versions/"
+	}
+	if cfg.MaxVersions <= 0 {
+		cfg.MaxVersions = 10
 	}
 	return &cfg, nil
 }

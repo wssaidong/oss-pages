@@ -9,14 +9,15 @@ import (
 func TestNewS3Backend_Memory(t *testing.T) {
 	cfg := &config.ServerConfig{
 		S3: struct {
-			Endpoint   string `mapstructure:"endpoint"`
-			Bucket     string `mapstructure:"bucket"`
-			Region     string `mapstructure:"region"`
-			AccessKey  string `mapstructure:"access_key"`
-			SecretKey  string `mapstructure:"secret_key"`
-			PathPrefix string `mapstructure:"path_prefix"`
-			Backend    string `mapstructure:"backend"`
-			RootDir    string `mapstructure:"root_dir"`
+			Endpoint      string `mapstructure:"endpoint"`
+			Bucket        string `mapstructure:"bucket"`
+			Region        string `mapstructure:"region"`
+			AccessKey     string `mapstructure:"access_key"`
+			SecretKey     string `mapstructure:"secret_key"`
+			PathPrefix    string `mapstructure:"path_prefix"`
+			VersionPrefix string `mapstructure:"version_prefix"`
+			Backend       string `mapstructure:"backend"`
+			RootDir       string `mapstructure:"root_dir"`
 		}{
 			Backend: "memory",
 			Bucket:  "test-bucket",
@@ -35,14 +36,15 @@ func TestNewS3Backend_Memory(t *testing.T) {
 func TestNewS3Backend_File(t *testing.T) {
 	cfg := &config.ServerConfig{
 		S3: struct {
-			Endpoint   string `mapstructure:"endpoint"`
-			Bucket     string `mapstructure:"bucket"`
-			Region     string `mapstructure:"region"`
-			AccessKey  string `mapstructure:"access_key"`
-			SecretKey  string `mapstructure:"secret_key"`
-			PathPrefix string `mapstructure:"path_prefix"`
-			Backend    string `mapstructure:"backend"`
-			RootDir    string `mapstructure:"root_dir"`
+			Endpoint      string `mapstructure:"endpoint"`
+			Bucket        string `mapstructure:"bucket"`
+			Region        string `mapstructure:"region"`
+			AccessKey     string `mapstructure:"access_key"`
+			SecretKey     string `mapstructure:"secret_key"`
+			PathPrefix    string `mapstructure:"path_prefix"`
+			VersionPrefix string `mapstructure:"version_prefix"`
+			Backend       string `mapstructure:"backend"`
+			RootDir       string `mapstructure:"root_dir"`
 		}{
 			Backend: "file",
 			RootDir: t.TempDir(),
@@ -62,14 +64,15 @@ func TestNewS3Backend_File(t *testing.T) {
 func TestNewS3Backend_Unknown(t *testing.T) {
 	cfg := &config.ServerConfig{
 		S3: struct {
-			Endpoint   string `mapstructure:"endpoint"`
-			Bucket     string `mapstructure:"bucket"`
-			Region     string `mapstructure:"region"`
-			AccessKey  string `mapstructure:"access_key"`
-			SecretKey  string `mapstructure:"secret_key"`
-			PathPrefix string `mapstructure:"path_prefix"`
-			Backend    string `mapstructure:"backend"`
-			RootDir    string `mapstructure:"root_dir"`
+			Endpoint      string `mapstructure:"endpoint"`
+			Bucket        string `mapstructure:"bucket"`
+			Region        string `mapstructure:"region"`
+			AccessKey     string `mapstructure:"access_key"`
+			SecretKey     string `mapstructure:"secret_key"`
+			PathPrefix    string `mapstructure:"path_prefix"`
+			VersionPrefix string `mapstructure:"version_prefix"`
+			Backend       string `mapstructure:"backend"`
+			RootDir       string `mapstructure:"root_dir"`
 		}{
 			Backend: "unknown",
 			Bucket:  "test-bucket",
@@ -85,14 +88,15 @@ func TestNewS3Backend_Unknown(t *testing.T) {
 func TestNewS3Backend_FileRequiresRootDir(t *testing.T) {
 	cfg := &config.ServerConfig{
 		S3: struct {
-			Endpoint   string `mapstructure:"endpoint"`
-			Bucket     string `mapstructure:"bucket"`
-			Region     string `mapstructure:"region"`
-			AccessKey  string `mapstructure:"access_key"`
-			SecretKey  string `mapstructure:"secret_key"`
-			PathPrefix string `mapstructure:"path_prefix"`
-			Backend    string `mapstructure:"backend"`
-			RootDir    string `mapstructure:"root_dir"`
+			Endpoint      string `mapstructure:"endpoint"`
+			Bucket        string `mapstructure:"bucket"`
+			Region        string `mapstructure:"region"`
+			AccessKey     string `mapstructure:"access_key"`
+			SecretKey     string `mapstructure:"secret_key"`
+			PathPrefix    string `mapstructure:"path_prefix"`
+			VersionPrefix string `mapstructure:"version_prefix"`
+			Backend       string `mapstructure:"backend"`
+			RootDir       string `mapstructure:"root_dir"`
 		}{
 			Backend: "file",
 			Bucket:  "test-bucket",

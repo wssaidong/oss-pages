@@ -29,13 +29,13 @@ func Run(cfg *config.ServerConfig) error {
 	}
 	s3Client := s3client.NewClient(backend)
 
-	fileStore := storage.NewStorage(s3Client, cfg.S3.Bucket, cfg.S3.PathPrefix)
+	fileStore := storage.NewStorage(s3Client, cfg.S3.Bucket, cfg.S3.PathPrefix, cfg.S3.VersionPrefix)
 	metaStore := storage.NewMetaStore(s3Client, cfg.S3.Bucket, cfg.S3.PathPrefix)
 
 	d := deployer.NewDeployer(fileStore)
 
 	deployHandler := handler.NewDeployHandler(d, metaStore, cfg.CDNBaseURL)
-	projectsHandler := handler.NewProjectsHandler(metaStore, fileStore)
+	projectsHandler := handler.NewProjectsHandler(metaStore, fileStore, cfg.CDNBaseURL)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
@@ -45,6 +45,9 @@ func Run(cfg *config.ServerConfig) error {
 	r.GET("/projects", projectsHandler.HandleListProjects)
 	r.GET("/projects/:name", projectsHandler.HandleGetProject)
 	r.DELETE("/projects/:name", projectsHandler.HandleDeleteProject)
+	r.POST("/projects/:name/rollback", projectsHandler.HandleRollback)
+	r.GET("/projects/:name/versions", projectsHandler.HandleListVersions)
+	r.DELETE("/projects/:name/versions/:id", projectsHandler.HandleDeleteVersion)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: r}

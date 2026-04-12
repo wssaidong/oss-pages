@@ -4,11 +4,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
 
-// mockStorage implements Storage interface for testing
+// mockStorage implements VersioningStorage interface for testing
 type mockStorage struct {
 	files   map[string][]byte
 	deleted []string
@@ -29,6 +30,54 @@ func (m *mockStorage) DeleteProject(ctx context.Context, projectName string) err
 		}
 	}
 	return nil
+}
+
+func (m *mockStorage) UploadVersionFiles(ctx context.Context, projectName, versionID string, files map[string][]byte) (int, error) {
+	versionPrefix := "v/" + versionID + "/"
+	for k, v := range files {
+		m.files[projectName+"/"+versionPrefix+k] = v
+	}
+	return len(files), nil
+}
+
+func (m *mockStorage) CleanRootFiles(ctx context.Context, projectName string) error {
+	rootPrefix := projectName + "/"
+	versionPrefix := projectName + "/v/"
+	var toDelete []string
+	for k := range m.files {
+		if strings.HasPrefix(k, rootPrefix) && !strings.HasPrefix(k, versionPrefix) {
+			toDelete = append(toDelete, k)
+		}
+	}
+	for _, k := range toDelete {
+		delete(m.files, k)
+	}
+	return nil
+}
+
+func (m *mockStorage) CopyVersionToRoot(ctx context.Context, projectName, versionID string) (int, error) {
+	versionPrefix := "v/" + versionID + "/"
+	rootPrefix := projectName + "/"
+	count := 0
+	for k, v := range m.files {
+		if strings.HasPrefix(k, projectName+"/"+versionPrefix) {
+			relPath := strings.TrimPrefix(k, projectName+"/"+versionPrefix)
+			m.files[rootPrefix+relPath] = v
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (m *mockStorage) ListVersionFiles(ctx context.Context, projectName, versionID string) ([]string, error) {
+	prefix := projectName + "/v/" + versionID + "/"
+	var result []string
+	for k := range m.files {
+		if strings.HasPrefix(k, prefix) {
+			result = append(result, k)
+		}
+	}
+	return result, nil
 }
 
 func createTestZip(t *testing.T, files map[string]string) []byte {

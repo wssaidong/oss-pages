@@ -21,6 +21,7 @@ var projectNameRe = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$`)
 // Deployer interface for dependency injection
 type Deployer interface {
 	Deploy(ctx context.Context, projectName string, zipReader io.Reader, size int64) (*deployer.DeployResult, error)
+	DeployWithVersion(ctx context.Context, projectName string, zipReader io.Reader, size int64) (*deployer.DeployResult, string, error)
 }
 
 // MetaStore interface for handler use
@@ -31,6 +32,10 @@ type MetaStore interface {
 	DeleteProject(ctx context.Context, name string) error
 	AcquireDeployLock(ctx context.Context, projectName, projectURL string) (string, error)
 	ReleaseDeployLock(ctx context.Context, meta *storage.ProjectMeta) error
+	GetVersion(ctx context.Context, projectName, versionID string) (*storage.VersionMeta, error)
+	AppendVersion(ctx context.Context, projectName string, version storage.VersionMeta, maxVersions int) error
+	DeleteVersion(ctx context.Context, projectName, versionID string) error
+	UpdateCurrentVersion(ctx context.Context, projectName, versionID string) error
 }
 
 // DeployResponse is the API response for deploy endpoint
@@ -38,6 +43,8 @@ type DeployResponse struct {
 	Success    bool   `json:"success"`
 	Project    string `json:"project,omitempty"`
 	URL        string `json:"url,omitempty"`
+	Version    string `json:"version,omitempty"`
+	PreviewURL string `json:"preview_url,omitempty"`
 	Files      int    `json:"files,omitempty"`
 	DeployedAt string `json:"deployed_at,omitempty"`
 	Error      string `json:"error,omitempty"`
@@ -127,7 +134,7 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 	_ = deployID
 
 	// Deploy files
-	result, err := h.deployer.Deploy(c.Request.Context(), projectName, file, header.Size)
+	result, versionID, err := h.deployer.DeployWithVersion(c.Request.Context(), projectName, file, header.Size)
 	if err != nil {
 		// Release lock on failure
 		h.metaStore.ReleaseDeployLock(c.Request.Context(), &storage.ProjectMeta{
@@ -161,12 +168,32 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 		return
 	}
 
+	// Build version metadata
+	if versionID != "" {
+		versionMeta := storage.VersionMeta{
+			ID:         versionID,
+			DeployedAt: result.DeployedAt,
+			FileCount:  result.FileCount,
+			PreviewURL: fmt.Sprintf("%s/%s/v/%s/", strings.TrimSuffix(h.cdnBaseURL, "/"), projectName, versionID),
+		}
+		if err := h.metaStore.AppendVersion(c.Request.Context(), projectName, versionMeta, 10); err != nil {
+			// Log but don't fail - files are already uploaded
+		}
+	}
+
 	// Release lock and update metadata
 	meta := &storage.ProjectMeta{
-		Name:       projectName,
-		URL:        url,
-		FileCount:  result.FileCount,
-		DeployedAt: result.DeployedAt,
+		Name:           projectName,
+		URL:            url,
+		CurrentVersion: versionID,
+		Versions: []storage.VersionMeta{
+			{
+				ID:         versionID,
+				DeployedAt: result.DeployedAt,
+				FileCount:  result.FileCount,
+				PreviewURL: url,
+			},
+		},
 	}
 	if err := h.metaStore.ReleaseDeployLock(c.Request.Context(), meta); err != nil {
 		c.JSON(http.StatusServiceUnavailable, DeployResponse{
@@ -181,6 +208,8 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 		Success:    true,
 		Project:    projectName,
 		URL:        url,
+		Version:    versionID,
+		PreviewURL: fmt.Sprintf("%s/v/%s/", url, versionID),
 		Files:      result.FileCount,
 		DeployedAt: result.DeployedAt.Format(time.RFC3339),
 	})
