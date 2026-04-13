@@ -57,7 +57,7 @@ func (m *mockS3) DeleteObjects(ctx context.Context, keys []string) error {
 func TestStorage_UploadProjectFiles(t *testing.T) {
 	mock := newMockS3()
 	client := s3client.NewClient(mock)
-	store := NewStorage(client, "my-bucket", "", "versions/")
+	store := NewStorage(client, "my-bucket", "", "_versions/")
 
 	ctx := context.Background()
 	files := map[string][]byte{
@@ -82,7 +82,7 @@ func TestStorage_UploadProjectFiles(t *testing.T) {
 func TestStorage_DeleteProject(t *testing.T) {
 	mock := newMockS3()
 	client := s3client.NewClient(mock)
-	store := NewStorage(client, "my-bucket", "", "versions/")
+	store := NewStorage(client, "my-bucket", "", "_versions/")
 
 	ctx := context.Background()
 	store.UploadProjectFiles(ctx, "my-app", map[string][]byte{
@@ -103,7 +103,7 @@ func TestStorage_DeleteProject(t *testing.T) {
 func TestStorage_WithPathPrefix(t *testing.T) {
 	mock := newMockS3()
 	client := s3client.NewClient(mock)
-	store := NewStorage(client, "my-bucket", "cdn/", "versions/")
+	store := NewStorage(client, "my-bucket", "cdn/", "_versions/")
 
 	ctx := context.Background()
 	store.UploadProjectFiles(ctx, "my-app", map[string][]byte{

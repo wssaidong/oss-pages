@@ -174,26 +174,20 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 			ID:         versionID,
 			DeployedAt: result.DeployedAt,
 			FileCount:  result.FileCount,
-			PreviewURL: fmt.Sprintf("%s/%s/v/%s/", strings.TrimSuffix(h.cdnBaseURL, "/"), projectName, versionID),
+			PreviewURL: fmt.Sprintf("%s/_versions/%s/%s/", strings.TrimSuffix(h.cdnBaseURL, "/"), projectName, versionID),
 		}
 		if err := h.metaStore.AppendVersion(c.Request.Context(), projectName, versionMeta, 10); err != nil {
 			// Log but don't fail - files are already uploaded
 		}
 	}
 
-	// Release lock and update metadata
+	// Release lock and update metadata (Versions are already handled by AppendVersion above)
 	meta := &storage.ProjectMeta{
 		Name:           projectName,
 		URL:            url,
+		FileCount:      result.FileCount,
+		DeployedAt:     result.DeployedAt,
 		CurrentVersion: versionID,
-		Versions: []storage.VersionMeta{
-			{
-				ID:         versionID,
-				DeployedAt: result.DeployedAt,
-				FileCount:  result.FileCount,
-				PreviewURL: url,
-			},
-		},
 	}
 	if err := h.metaStore.ReleaseDeployLock(c.Request.Context(), meta); err != nil {
 		c.JSON(http.StatusServiceUnavailable, DeployResponse{
@@ -209,7 +203,7 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 		Project:    projectName,
 		URL:        url,
 		Version:    versionID,
-		PreviewURL: fmt.Sprintf("%s/v/%s/", url, versionID),
+		PreviewURL: fmt.Sprintf("%s/_versions/%s/%s/", strings.TrimSuffix(h.cdnBaseURL, "/"), projectName, versionID),
 		Files:      result.FileCount,
 		DeployedAt: result.DeployedAt.Format(time.RFC3339),
 	})

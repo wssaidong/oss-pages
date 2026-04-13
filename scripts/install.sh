@@ -8,7 +8,7 @@ set -e
 
 REPO="oss-pages/oss-pages"
 INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="oss-cli"
+BINARY_NAME="pages-cli"
 
 # Colors
 RED='\033[0;31m'

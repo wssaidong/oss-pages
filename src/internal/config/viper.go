@@ -19,7 +19,7 @@ type ServerConfig struct {
 		AccessKey     string `mapstructure:"access_key"`
 		SecretKey     string `mapstructure:"secret_key"`
 		PathPrefix    string `mapstructure:"path_prefix"`
-		VersionPrefix string `mapstructure:"version_prefix"` // separate prefix for version snapshots (default: "versions/")
+		VersionPrefix string `mapstructure:"version_prefix"` // separate prefix for version snapshots (default: "_versions/")
 		Backend       string `mapstructure:"backend"`         // memory | file | s3 (default: memory)
 		RootDir       string `mapstructure:"root_dir"`        // for file backend
 	} `mapstructure:"s3"`
@@ -47,7 +47,7 @@ func LoadServerConfig(path string) (*ServerConfig, error) {
 		cfg.S3.Backend = "memory"
 	}
 	if cfg.S3.VersionPrefix == "" {
-		cfg.S3.VersionPrefix = "versions/"
+		cfg.S3.VersionPrefix = "_versions/"
 	}
 	if cfg.MaxVersions <= 0 {
 		cfg.MaxVersions = 10

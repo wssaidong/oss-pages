@@ -126,23 +126,36 @@ func (m *MetaStore) AcquireDeployLock(ctx context.Context, projectName, projectU
 }
 
 // ReleaseDeployLock sets deploying=false and updates deployment result.
+// It merges fields from meta into the existing record, preserving Versions accumulated by AppendVersion.
 func (m *MetaStore) ReleaseDeployLock(ctx context.Context, meta *ProjectMeta) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	meta.Deploying = false
-	meta.DeployID = ""
-
 	projects, _ := m.getProjectsLocked(ctx)
 	found := false
-	for i, p := range projects {
+	for _, p := range projects {
 		if p.Name == meta.Name {
-			projects[i] = meta
+			p.Deploying = false
+			p.DeployID = ""
+			if meta.URL != "" {
+				p.URL = meta.URL
+			}
+			if meta.FileCount > 0 {
+				p.FileCount = meta.FileCount
+			}
+			if !meta.DeployedAt.IsZero() {
+				p.DeployedAt = meta.DeployedAt
+			}
+			if meta.CurrentVersion != "" {
+				p.CurrentVersion = meta.CurrentVersion
+			}
 			found = true
 			break
 		}
 	}
 	if !found {
+		meta.Deploying = false
+		meta.DeployID = ""
 		projects = append(projects, meta)
 	}
 
@@ -275,7 +288,7 @@ func (m *MetaStore) MigrateToVersioned(ctx context.Context, projectName string, 
 						ID:         versionID,
 						DeployedAt: deployedAt,
 						FileCount:  fileCount,
-						PreviewURL: fmt.Sprintf("%s/%s/v/%s/", strings.TrimSuffix(cdnBaseURL, "/"), projectName, versionID),
+						PreviewURL: fmt.Sprintf("%s/_versions/%s/%s/", strings.TrimSuffix(cdnBaseURL, "/"), projectName, versionID),
 					},
 				}
 				p.CurrentVersion = versionID

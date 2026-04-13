@@ -14,7 +14,7 @@ type Storage struct {
 	client        *s3client.Client
 	bucket        string
 	pathPrefix    string // production files: "sites/"
-	versionPrefix string // version snapshots: "versions/"
+	versionPrefix string // version snapshots: "_versions/"
 }
 
 // NewStorage creates a new Storage instance
