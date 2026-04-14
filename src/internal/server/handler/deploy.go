@@ -53,14 +53,16 @@ type DeployResponse struct {
 
 // DeployHandler handles POST /deploy
 type DeployHandler struct {
-	deployer   Deployer
-	metaStore  MetaStore
-	cdnBaseURL string
+	deployer    Deployer
+	metaStore   MetaStore
+	fileStore   FileStore
+	cdnBaseURL  string
+	maxVersions int
 }
 
 // NewDeployHandler creates a new DeployHandler
-func NewDeployHandler(d Deployer, ms MetaStore, cdnBaseURL string) *DeployHandler {
-	return &DeployHandler{deployer: d, metaStore: ms, cdnBaseURL: cdnBaseURL}
+func NewDeployHandler(d Deployer, ms MetaStore, fs FileStore, cdnBaseURL string, maxVersions int) *DeployHandler {
+	return &DeployHandler{deployer: d, metaStore: ms, fileStore: fs, cdnBaseURL: cdnBaseURL, maxVersions: maxVersions}
 }
 
 // validateProjectName checks if the project name is valid
@@ -168,16 +170,33 @@ func (h *DeployHandler) HandleDeploy(c *gin.Context) {
 		return
 	}
 
-	// Build version metadata
+	// Build version metadata and clean up old versions
 	if versionID != "" {
+		ctx := c.Request.Context()
 		versionMeta := storage.VersionMeta{
 			ID:         versionID,
 			DeployedAt: result.DeployedAt,
 			FileCount:  result.FileCount,
 			PreviewURL: fmt.Sprintf("%s/_versions/%s/%s/", strings.TrimSuffix(h.cdnBaseURL, "/"), projectName, versionID),
 		}
-		if err := h.metaStore.AppendVersion(c.Request.Context(), projectName, versionMeta, 10); err != nil {
+
+		// Get existing versions before append to identify which will be trimmed
+		project, _ := h.metaStore.GetProject(ctx, projectName)
+		var trimmedVersions []string
+		if project != nil && len(project.Versions) >= h.maxVersions {
+			excess := len(project.Versions) - h.maxVersions + 1 // +1 for the new version about to be added
+			for i := 0; i < excess; i++ {
+				trimmedVersions = append(trimmedVersions, project.Versions[i].ID)
+			}
+		}
+
+		if err := h.metaStore.AppendVersion(ctx, projectName, versionMeta, h.maxVersions); err != nil {
 			// Log but don't fail - files are already uploaded
+		}
+
+		// Delete S3 files for trimmed old versions
+		for _, oldVersionID := range trimmedVersions {
+			h.fileStore.DeleteVersionFiles(ctx, projectName, oldVersionID)
 		}
 	}
 

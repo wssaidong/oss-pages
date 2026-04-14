@@ -150,7 +150,7 @@ func TestDeployHandler_Success(t *testing.T) {
 	mock := &mockDeployer{
 		result: &deployer.DeployResult{FileCount: 5, DeployedAt: time.Now()},
 	}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -175,7 +175,7 @@ func TestDeployHandler_Success(t *testing.T) {
 func TestDeployHandler_MissingProject(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mock := &mockDeployer{}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -199,7 +199,7 @@ func TestDeployHandler_MissingProject(t *testing.T) {
 func TestDeployHandler_MissingFile(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mock := &mockDeployer{}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -224,7 +224,7 @@ func TestDeployHandler_DeployFailed(t *testing.T) {
 	mock := &mockDeployer{
 		err: errors.New("upload failed"),
 	}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -248,7 +248,7 @@ func TestDeployHandler_InvalidZip(t *testing.T) {
 	mock := &mockDeployer{
 		err: errors.New("invalid zip: bad header"),
 	}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -271,7 +271,7 @@ func TestDeployHandler_PathTraversal(t *testing.T) {
 	mock := &mockDeployer{
 		err: errors.New("path traversal detected: ../../etc/passwd"),
 	}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -292,7 +292,7 @@ func TestDeployHandler_PathTraversal(t *testing.T) {
 func TestDeployHandler_RequestTooLarge(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	mock := &mockDeployer{}
-	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, "https://cdn.example.com")
+	h := NewDeployHandler(mock, &mockMetaStoreForDeploy{projects: make(map[string]*storage.ProjectMeta)}, &mockFileStore{}, "https://cdn.example.com", 10)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

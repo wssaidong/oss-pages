@@ -235,7 +235,8 @@ func (m *MetaStore) AppendVersion(ctx context.Context, projectName string, versi
 	return fmt.Errorf("project '%s' not found", projectName)
 }
 
-// DeleteVersion removes a version from the project
+// DeleteVersion removes a version from the project.
+// Returns an error if the version is the current production version.
 func (m *MetaStore) DeleteVersion(ctx context.Context, projectName, versionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -244,6 +245,9 @@ func (m *MetaStore) DeleteVersion(ctx context.Context, projectName, versionID st
 
 	for _, p := range projects {
 		if p.Name == projectName {
+			if p.CurrentVersion == versionID {
+				return fmt.Errorf("cannot delete current production version '%s'", versionID)
+			}
 			filtered := make([]VersionMeta, 0, len(p.Versions))
 			for _, v := range p.Versions {
 				if v.ID != versionID {

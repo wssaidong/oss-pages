@@ -34,7 +34,7 @@ func Run(cfg *config.ServerConfig) error {
 
 	d := deployer.NewDeployer(fileStore)
 
-	deployHandler := handler.NewDeployHandler(d, metaStore, cfg.CDNBaseURL)
+	deployHandler := handler.NewDeployHandler(d, metaStore, fileStore, cfg.CDNBaseURL, cfg.MaxVersions)
 	projectsHandler := handler.NewProjectsHandler(metaStore, fileStore, cfg.CDNBaseURL)
 
 	gin.SetMode(gin.ReleaseMode)

@@ -93,7 +93,7 @@ func setupRouter(s3Mock *mockS3) *gin.Engine {
 	metaStore := storage.NewMetaStore(s3Client, "test-bucket", "")
 
 	d := deployer.NewDeployer(fileStore)
-	deployHandler := handler.NewDeployHandler(d, metaStore, "https://cdn.example.com")
+	deployHandler := handler.NewDeployHandler(d, metaStore, fileStore, "https://cdn.example.com", 10)
 	projectsHandler := handler.NewProjectsHandler(metaStore, fileStore, "https://cdn.example.com")
 
 	r := gin.New()
